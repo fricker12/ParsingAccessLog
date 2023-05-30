@@ -19,11 +19,22 @@ Then run the script as follows:
 ```
 
 Собрать статистику по IP-адресам браузера:
-python log_analyzer.py extract_ip access_log
+python log_analyzer.py extract_ip access_log -n 10
 
 INFO:root:Extracting IP addresses from access_log...
 INFO:root:IP Address Statistics:
-- 10.1.2.194: 5
+
+Most common IP addresses (top 10):
+ ip: 10.1.2.194 counts: 100001
+ ip: 10.1.4.69 counts: 7166
+ ip: 10.1.3.204 counts: 7141
+ ip: 10.1.3.205 counts: 7139
+ ip: 10.1.4.67 counts: 7136
+ ip: 10.1.4.15 counts: 7135
+ ip: 10.1.3.202 counts: 7135
+ ip: 10.1.3.203 counts: 7135
+ ip: 10.1.3.201 counts: 7134
+ ip: 10.1.4.70 counts: 7133
 
 Найти частоту запросов в интервал времени dT:
 python log_analyzer.py find_freq access_log -dT 10
@@ -33,14 +44,15 @@ INFO:root:Request Frequency Statistics:
 - [08/Oct/2015:09:01:40 +0000 - 08/Oct/2015:09:01:49 +0000]: 5 requests
 
 Найти N наиболее частых User-Agent:
-python log_analyzer.py count_user_agents access_log Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0 -n 3
+python log_analyzer.py extract_user_agents access_log -n 5
 
 INFO:root:Counting User Agents in access_log...
 INFO:root:User Agent Statistics:
-- Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0: 2
+User Agents extracted from access_log: "Amazon CloudFront" count 18469
+User Agents extracted from access_log: "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36" count 9077
 
 Статистика статуса кода S (50x ошибок) в интервал времени dT:
-python log_analyzer.py find_status_code_stats access_log -dT 5
+python log_analyzer.py find_status_code access_log -dT 5
 
 INFO:root:Finding status code statistics in time intervals of 5 minutes...
 INFO:root:Status Code Statistics:

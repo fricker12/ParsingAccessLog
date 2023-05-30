@@ -1,111 +1,97 @@
 import argparse
 import re
 import logging
+from datetime import datetime
+from collections import Counter
 
-
-def extract_ip_addresses(log_file):
+def extract_ip_addresses(log_file, N):
     logging.info('Extracting IP addresses...')
     """
     Extracts IP addresses from the log file.
 
     Args:
         log_file (str): Path to the log file.
+        N (int): Number of most common IP addresses to return.
 
     Returns:
-        list: List of extracted IP addresses.
+        tuple: Tuple containing the list of extracted IP addresses and a dictionary with IP addresses and their counts.
     """
-    pattern = r'^([\d.]+)'
+    pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'  # Pattern to match IP addresses
     ip_addresses = []
     with open(log_file, 'r') as file:
         for line in file:
-            match = re.search(pattern, line)
-            if match:
-                ip_addresses.append(match.group(1))
-    return ip_addresses
+            matches = re.findall(pattern, line)
+            ip_addresses.extend(matches)
 
+            # Extracting log format data
+            log_match = re.search(
+                r'^([\d.]+) \(([\d.]+)\) (-) (-) \[(.+)\] "(.+)" (\d+) (\d+) (\d+) (\d+) "(.+)" "(.+)" "(.+)"',
+                line
+            )
+            if log_match:
+                log_format = '{} {} {} {} "{}" {} {} {} {} "{}" "{}" "{}"'.format(
+                    log_match.group(1),
+                    log_match.group(2),
+                    log_match.group(3),
+                    log_match.group(4),
+                    log_match.group(5),
+                    log_match.group(6),
+                    log_match.group(7),
+                    log_match.group(8),
+                    log_match.group(9),
+                    log_match.group(10),
+                    log_match.group(11),
+                    log_match.group(12),
+                    log_match.group(13)
+                )
+                logging.info('Log Format: %s', log_format)
 
-def count_ip_addresses(ip_addresses, n):
-    logging.info('Counting IP addresses...')
-    """
-    Counts the occurrence of IP addresses and returns the top N IP addresses.
-
-    Args:
-        ip_addresses (list): List of IP addresses.
-        n (int): Number of top IP addresses to return.
-
-    Returns:
-        list: List of top N IP addresses with their occurrence count.
-    """
-    ip_counts = {}
-    for ip in ip_addresses:
-        ip_counts[ip] = ip_counts.get(ip, 0) + 1
-    top_ip_addresses = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:n]
-    return top_ip_addresses
-
+    ip_counts = Counter(ip_addresses)
+    most_common = ip_counts.most_common(N)
+    print(f"Most common IP addresses (top {N}):")
+    for ip, count in most_common:
+        print(f" ip: {ip} counts: {count}")
+    return ip_addresses, most_common
 
 def find_request_frequency(log_file, dT):
-    logging.info(f'Finding request frequency with interval {dT} minutes...')
-    """
-    Finds the frequency of requests in time intervals of dT minutes.
-
-    Args:
-        log_file (str): Path to the log file.
-        dT (int): Time interval in minutes.
-
-    Returns:
-        dict: Dictionary containing the frequency of requests in each interval.
-    """
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(message)s')
+    logging.info('Finding request frequency with interval %s minutes...', dT)
+    
     pattern = r'\[(\d{2}/\w+/\d{4}:\d{2}:\d{2}:\d{2})'
     request_frequency = {}
+    
     with open(log_file, 'r') as file:
         for line in file:
             match = re.search(pattern, line)
             if match:
                 timestamp = match.group(1)
-                interval = timestamp[:14] + '00:00'
-                request_frequency[interval] = request_frequency.get(interval, 0) + 1
+                interval = datetime.strptime(timestamp, '%d/%b/%Y:%H:%M:%S').replace(second=0, microsecond=0)
+                interval_key = interval.strftime('%d/%b/%Y:%H:%M:%S')
+                request_frequency[interval_key] = request_frequency.get(interval_key, 0) + 1
+                log_line = f'{line.strip()} "{interval_key}"'
+                logging.info(log_line)
+
     return request_frequency
 
+def extract_user_agents(log_file, N):
+    user_agents = {}
+    user_agent_pattern = r'("[^"]+")\s+"[^"]+"$'  # Регулярное выражение для извлечения User-Agent
 
-def extract_user_agents(log_file):
-    logging.info('Extracting User Agents...')
-    """
-    Extracts User Agents from the log file.
-
-    Args:
-        log_file (str): Path to the log file.
-
-    Returns:
-        list: List of extracted User Agents.
-    """
-    pattern = r'"([^"]+)"$'
-    user_agents = []
     with open(log_file, 'r') as file:
         for line in file:
-            match = re.search(pattern, line)
-            if match:
-                user_agents.append(match.group(1))
-    return user_agents
-
-
-def count_user_agents(user_agents, n):
-    logging.info('Counting User Agents...')
-    """
-    Counts the occurrence of User Agents and returns the top N User Agents.
-
-    Args:
-        user_agents (list): List of User Agents.
-        n (int): Number of top User Agents to return.
-
-    Returns:
-        list: List of top N User Agents with their occurrence count.
-    """
-    user_agent_counts = {}
-    for user_agent in user_agents:
-        user_agent_counts[user_agent] = user_agent_counts.get(user_agent, 0) + 1
-    top_user_agents = sorted(user_agent_counts.items(), key=lambda x: x[1], reverse=True)[:n]
-    return top_user_agents
-
+            user_agent_match = re.search(user_agent_pattern, line)
+            if user_agent_match:
+                user_agent = user_agent_match.group(1)
+                if user_agent in user_agents:
+                    user_agents[user_agent] += 1
+                else:
+                    user_agents[user_agent] = 1
+    
+    sorted_user_agents = sorted(user_agents.items(), key=lambda x: x[1], reverse=True)
+    
+    for user_agent, count in sorted_user_agents[:N]:
+        print(f"{user_agent}: {count}")
+    return sorted_user_agents[:N]
 
 def find_status_code_stats(log_file, dT):
     logging.info(f'Finding status code statistics with interval {dT} minutes...')
@@ -253,11 +239,7 @@ def setup_arg_parser():
     # Subparser for 'extract_ip' command
     extract_ip_parser = subparsers.add_parser('extract_ip', help='Extract IP addresses from the log file')
     extract_ip_parser.add_argument('log_file', type=str, help='Path to the log file')
-
-    # Subparser for 'count_ip' command
-    count_ip_parser = subparsers.add_parser('count_ip', help='Count the occurrence of IP addresses')
-    count_ip_parser.add_argument('ip_addresses', type=str, nargs='+', help='List of IP addresses')
-    count_ip_parser.add_argument('-n', type=int, default=10, help='Number of top IP addresses to return')
+    extract_ip_parser.add_argument('-n', type=int, default=10, help='Number of top IP addresses to return')
 
     # Subparser for 'find_freq' command
     find_freq_parser = subparsers.add_parser('find_freq', help='Find the frequency of requests in time intervals')
@@ -267,11 +249,7 @@ def setup_arg_parser():
     # Subparser for 'extract_user_agents' command
     extract_user_agents_parser = subparsers.add_parser('extract_user_agents', help='Extract User Agents from the log file')
     extract_user_agents_parser.add_argument('log_file', type=str, help='Path to the log file')
-
-    # Subparser for 'count_user_agents' command
-    count_user_agents_parser = subparsers.add_parser('count_user_agents', help='Count the occurrence of User Agents')
-    count_user_agents_parser.add_argument('user_agents', type=str, nargs='+', help='List of User Agents')
-    count_user_agents_parser.add_argument('-n', type=int, default=10, help='Number of top User Agents to return')
+    extract_user_agents_parser.add_argument('-n', type=int, default=10, help='Number of top IP addresses to return')
 
     # Subparser for 'find_status_code' command
     find_status_code_parser = subparsers.add_parser('find_status_code', help='Find the statistics of status codes in time intervals')
@@ -312,39 +290,29 @@ def main():
     parser = setup_arg_parser()
     args = parser.parse_args()
     
+    #print(extract_user_agents_('access_log',5))
+
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
     if args.command == 'extract_ip':
-        ip_addresses = extract_ip_addresses(args.log_file)
-        print(ip_addresses)
-        with open('log_extraction.log', 'a') as log:
+        ip_addresses, count_ip = extract_ip_addresses(args.log_file,args.n)
+        #print(count_ip)
+        with open('log_extraction.log', 'w') as log:
             log.write(f'IP addresses extracted from {args.log_file}: {ip_addresses}\n')
-
-    elif args.command == 'count_ip':
-        ip_counts = count_ip_addresses(args.ip_addresses, args.n)
-        print(ip_counts)
-        with open('log_extraction.log', 'a') as log:
-            log.write(f'Top {args.n} IP addresses with their occurrence count: {ip_counts}\n')
-
+            for ip, count in count_ip:
+                log.write(f' ip: {ip} counts: {count}\n')
     elif args.command == 'find_freq':
         request_frequency = find_request_frequency(args.log_file, args.dT)
-        print(request_frequency)
         with open('log_extraction.log', 'a') as log:
             log.write(f'Frequency of requests in time intervals of {args.dT} minutes: {request_frequency}\n')
 
     elif args.command == 'extract_user_agents':
-        user_agents = extract_user_agents(args.log_file)
-        print(user_agents)
-        with open('log_extraction.log', 'a') as log:
-            log.write(f'User Agents extracted from {args.log_file}: {user_agents}\n')
-
-    elif args.command == 'count_user_agents':
-        user_agent_counts = count_user_agents(args.user_agents, args.n)
-        print(user_agent_counts)
-        with open('log_extraction.log', 'a') as log:
-            log.write(f'Top {args.n} User Agents with their occurrence count: {user_agent_counts}\n')
+        user_agents = extract_user_agents(args.log_file,args.n)
+        with open('log_extraction.log', 'w') as log:
+            for user_agent, count in user_agents:
+                log.write(f'User Agents extracted from {args.log_file}: {user_agent} count {count}\n')
 
     elif args.command == 'find_status_code':
         status_code_stats = find_status_code_stats(args.log_file, args.dT)

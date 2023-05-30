@@ -1,0 +1,6 @@
+User Agents extracted from access_log: "Amazon CloudFront" count 18469
+User Agents extracted from access_log: "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36" count 9077
+User Agents extracted from access_log: "Jakarta Commons-HttpClient/3.1" count 7624
+User Agents extracted from access_log: "-" count 5615
+User Agents extracted from access_log: "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36" count 5469
+Statistics of status codes in time intervals of 5 minutes: {'08/Oct/2015:0900:00': {'200': 79430, '304': 18041, '302': 169, '206': 455, '301': 1495, '404': 383, '412': 1, '400': 5, '500': 20, '416': 1}}
